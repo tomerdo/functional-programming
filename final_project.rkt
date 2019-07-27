@@ -27,32 +27,41 @@
     (letrec ((combinators (lambda (n acc vars)
                             (cond [(zero? n) acc]
                                   [(= n 1) 
-                                            (if (empty? acc)
+                                            (if (empty? vars)
                                                 `(,(get-new-var))
-                                                (map (lambda(var)
-                                                       (map (lambda(expr)(string-append expr var (close-brackets (length vars)))) (flatten acc)))
-                                                     vars))]
+                                                (if (empty? acc)
+                                                    vars
+                                                    (map (lambda(var)
+                                                           (map (lambda(expr)(string-append expr var (close-brackets (length vars)))) (flatten acc)))
+                                                         vars)))]
                                   [else
                                     (let* ((fresh-var (get-new-var))
                                            (fresh-lambda (string-append lambda-string fresh-var ") "))
                                            )
+                                     (append
+                                      ; lambda combinator
                                       (combinators (- n 1)
-                                                   ;(append
-                                                 ;   `(,fresh-lambda)
                                                     (if (empty? acc)
                                                         `(,fresh-lambda)
-                                            ;            '()
                                                         (map (lambda(expr) (string-append expr fresh-lambda)) (flatten acc))
                                                         )
                                                  ;   )
                                                    (append vars `(,fresh-var))
                                                    )
-                                      )]
+                                      
+                                      ; application combinators
+                                      (if (< n 4)
+                                          '()
+                                          (let* ((combinators_p (combinators (- n 3) acc (append vars `(,fresh-var))))
+                                                 (combinators_q (combinators (- n 3) acc (append vars `(,fresh-var)))))
+                                            (map (lambda(p_comb)(map (lambda(q_comb)(string-append  fresh-lambda "(" p_comb " " q_comb ")" )) combinators_q)) combinators_p)
+                                            )
+                                      )))]
                                   )
                             )
                           )
              )
-      (flatten (combinators n '() `()))
+      (map string->symbol (flatten (combinators n '() `())))
       )
     )
   )
