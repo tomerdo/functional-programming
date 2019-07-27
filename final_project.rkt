@@ -100,7 +100,16 @@
 
 
 ; this function returns stream of all combinators
-(define combinators-stream '())
+
+(define combinators-stream
+  (letrec ((run
+            (lambda (n curr-list)
+              (if (empty? curr-list)
+                  (let* ((n (+ n 1))
+                         (combs-n (combinators n)))
+                    (cons (car combs-n) (lambda () (run n (cdr combs-n)))))
+                  (cons (car curr-list) (lambda () (run n (cdr curr-list))))))))
+    (run 0 '())))
 
 
 ; test function
@@ -114,21 +123,25 @@
   )
                                                    
 
-(define num-of-comb
-  (lambda(n)
-    (if (< n 2)
-        n
-        ;; for each 1<= i <= n-1 num-of-comb(i) + num-of-comb(n-i) + num-of-comb(n)
-        (let*
-            (
-             (range (my-range 1 (- n 1) 1))
-             (results (map (lambda(n) (num-of-comb n)) range))
-             )
-          (+ (foldl + 0 results) (* 2 (num-of-comb n)))
-          )
-        )
-    )
-  )
+(define stream-car (lambda (stream) (car stream)))
+
+(define stream-cdr (lambda (stream) ((cdr stream))))
+(define stream-cons
+  (lambda (e stream)
+    (cons e
+          (lambda () stream))))
+
+(define stream-nil '())
+
+(define stream+count->list
+  (lambda (stream n)
+    (cond ((zero? n) '())
+          ((null? stream) '())
+          (else (cons (stream-car stream)
+                      (stream+count->list
+                       (stream-cdr stream)
+                       (- n 1)))))))
+
          
          
 (define my-range (lambda (a b)
