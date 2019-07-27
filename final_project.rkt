@@ -1,25 +1,13 @@
 #lang racket
 
 (define lambda-string "(lambda (")
-;;; this function get natural number n and return list of all the combintors in the length l (as string)
-;(define combinators
- ; (lambda(n)
-  ;  (letrec ((combinators (lambda (n acc vars)
-                                        
-   ; (cond [(zero? n) acc]
-    ;      [(= n 1)
-     ;      (let ((var-str (symbol->string(gensym)))) `(,(string-append lambda-string var-str "." var-str)))           
-      ;     ]
-       ;   [else
-        ;   (let ((fresh-var (symbol->string(gensym))))
-         ;    (append (combinators (- n 1)) (map (lambda(str)(string-append str lambda-string fresh-var "." fresh-var))(combinators (- n 1))))) ]
-
-          ;))))
-     ; (combinators n '() ))
-    ;))
 
 (define close-brackets (lambda (len)
                          (make-string len #\))))
+
+; used racket (due to the editor) and now import to chez
+(define empty? null?)
+
 
 (define combinators
   (lambda(n)
@@ -32,18 +20,18 @@
                                                 (if (empty? acc)
                                                     vars
                                                     (map (lambda(var)
-                                                           (map (lambda(expr)(string-append expr var (close-brackets (length vars)))) (flatten acc)))
+                                                           (map (lambda(expr)`(,expr ,var)) acc))
                                                          vars)))]
                                   [else
                                     (let* ((fresh-var (get-new-var))
-                                           (fresh-lambda (string-append lambda-string fresh-var ") "))
+                                           (fresh-lambda `(lambda (,fresh-var)))
                                            )
                                      (append
                                       ; lambda combinator
                                       (combinators (- n 1)
                                                     (if (empty? acc)
                                                         `(,fresh-lambda)
-                                                        (map (lambda(expr) (string-append expr fresh-lambda)) (flatten acc))
+                                                        (map (lambda(expr) `(,expr (lambda (,fresh-var))))  acc)
                                                         )
                                                  ;   )
                                                    (append vars `(,fresh-var))
@@ -56,25 +44,57 @@
                                                  (range (my-range 1 max-m)) ;; all the posibles m's
                                                  (combs_p (map (lambda(m) (flatten (combinators m acc (append vars `(,fresh-var)))) ) range))
                                                  (p-q-pairs (matching-p-to-q combs_p))) ; list of all matching i to (m - i) over all possible indexs
-                                                ; (combinators_p (flatten (combinators (- n 3) acc (append vars `(,fresh-var)))))
-                                                ; (combinators_q (flatten (combinators (- n 3) acc (append vars `(,fresh-var))))))
-                                            ;(map (lambda(p_comb)(map (lambda(q_comb)(string-append  fresh-lambda "(" p_comb " " q_comb "))" )) combinators_q)) combinators_p)
                                             (map (lambda(comb_p-comb_q)
-                                                  (map (lambda(p_comb)(map (lambda(q_comb)(string-append  fresh-lambda "(" p_comb " " q_comb "))" ))
+                                                  (map (lambda(p_comb)(map (lambda(q_comb)`(,fresh-lambda ( ,p_comb  ,q_comb )) ))
                                                                            (car comb_p-comb_q)))
                                                         (cdr comb_p-comb_q)))
                                                     p-q-pairs)
                                             )
-                                      )))]
+                                      ))]
                                   )
                             )
                           )
              )
-      (map string->symbol (flatten (combinators n '() `())))
+      ;(map string->symbol
+            (combinators n '() `())
+           ;)
       )
     )
   )
 
+(define gen-comb
+  (lambda(n)
+    (set! count 0)
+    (letrec ((gen-comb (lambda (n vars)
+                         (cond
+                           [(= n 0) '()]
+                           [(= n 1) (if
+                                     (null? vars)
+                                     `(,(get-new-var))
+                                     vars)
+                                     ]
+                           [else
+                            (let* ((fresh-var (get-new-var))
+                                   (sub-comb-n-1 (gen-comb (- n 1) (cons fresh-var vars)))
+                                   ;; the recursive call to lambda-structre
+                                   (extend-to-lambda (map (lambda(sub-expr) `(lambda (,fresh-var) ,sub-expr)) sub-comb-n-1))
+                                   (max-m (- n 3))
+                                   (range (my-range 1 max-m)) ;; all the posibles m's
+                                   (combs_p (map (lambda(m) (gen-comb m (cons fresh-var vars))) range))
+                                   (p-q-pairs (matching-p-to-q combs_p))
+                                   )
+                              (append
+                               
+                               (map (lambda(p-q-pair) (map (lambda(p_expr)
+                                                             (map (lambda(q_expr)
+                                                                                   `(lambda (,fresh-var) (,p_expr ,q_expr))) (cdr p-q-pair)))
+                                                             (car p-q-pair))) p-q-pairs)
+                               extend-to-lambda
+                               ))                              
+                              ]))))
+      (gen-comb n '()))
+    )
+  )
 
 (define matching-p-to-q
   (lambda(sub-combinators)
@@ -95,13 +115,13 @@
   (let (
         (new-var (string-append "v" (number->string count)))
         )
-    (set! count (+ 1 count)) new-var) 
+    (set! count (+ 1 count)) (string->symbol new-var)) 
     )
 
 
 ; this function returns stream of all combinators
 
-(define combinators-stream
+(define combinators-stream-old
   (letrec ((run
             (lambda (n curr-list)
               (if (empty? curr-list)
@@ -111,17 +131,15 @@
                   (cons (car curr-list) (lambda () (run n (cdr curr-list))))))))
     (run 0 '())))
 
-
-; test function
-(define (test)
-  (and (= 1 (length (combinators 1)))
-       (= 1 (length (combinators 2)))
-       (= 2 (length (combinators 3)))
-    
-       )
-  
-  )
-                                                   
+(define combinators-stream
+  (letrec ((run
+            (lambda (n curr-list)
+              (if (empty? curr-list)
+                  (let* ((n (+ n 1))
+                         (combs-n (gen-comb n)))
+                    (cons (car combs-n) (lambda () (run n (cdr combs-n)))))
+                  (cons (car curr-list) (lambda () (run n (cdr curr-list))))))))
+    (run 0 '())))
 
 (define stream-car (lambda (stream) (car stream)))
 
@@ -141,13 +159,35 @@
                       (stream+count->list
                        (stream-cdr stream)
                        (- n 1)))))))
-
-         
-         
+     
 (define my-range (lambda (a b)
-  (if (>= a b)
-      `(,a)
-      (cons a (my-range (+ 1 a) b)))))
+  (cond [(> a b) '()]
+        [(= a b) `(,a)]
+        [else (cons a (my-range (+ 1 a) b))])))
+
+
+; test function
+(define (test-old)
+  (and (= 1 (length (combinators 1)))
+       (= 1 (length (combinators 2)))
+       (= 2 (length (combinators 3)))
+    
+       )
+  
+  )
+
+(define (test)
+  (and (equal? '(v0) (gen-comb 1))
+       (equal? '((lambda (v0) v0)) (gen-comb 2))
+       (equal? '((lambda (v0) (lambda (v1) v1))(lambda (v0) (lambda (v1) v0))) (gen-comb 3))
+       ;(equal?
+        ;'((lambda (v0) (lambda (v1) (lambda (v2) v2)))(lambda (v0) (lambda (v1) (lambda (v2) v1)))(lambda (v0) (lambda (v1) (lambda (v2) v0)))(lambda (v0) (v0 v0)))
+        ;(gen-comb 4))
+       ))
+
+(define (test-stream)
+  (and (eq? (stream+count->list combinators-stream 1) (gen-comb 1)) #t))
+                                                   
 
 ;;; output examples
 ; ((gen-combs 3)
