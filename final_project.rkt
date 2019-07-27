@@ -52,9 +52,18 @@
                                       ; application combinators
                                       (if (< n 4)
                                           '()
-                                          (let* ((combinators_p (combinators (- n 3) acc (append vars `(,fresh-var))))
-                                                 (combinators_q (combinators (- n 3) acc (append vars `(,fresh-var)))))
-                                            (map (lambda(p_comb)(map (lambda(q_comb)(string-append  fresh-lambda "(" p_comb " " q_comb ")" )) combinators_q)) combinators_p)
+                                          (let* ((max-m (- n 3))
+                                                 (range (my-range 1 max-m)) ;; all the posibles m's
+                                                 (combs_p (map (lambda(m) (flatten (combinators m acc (append vars `(,fresh-var)))) ) range))
+                                                 (p-q-pairs (matching-p-to-q combs_p))) ; list of all matching i to (m - i) over all possible indexs
+                                                ; (combinators_p (flatten (combinators (- n 3) acc (append vars `(,fresh-var)))))
+                                                ; (combinators_q (flatten (combinators (- n 3) acc (append vars `(,fresh-var))))))
+                                            ;(map (lambda(p_comb)(map (lambda(q_comb)(string-append  fresh-lambda "(" p_comb " " q_comb "))" )) combinators_q)) combinators_p)
+                                            (map (lambda(comb_p-comb_q)
+                                                  (map (lambda(p_comb)(map (lambda(q_comb)(string-append  fresh-lambda "(" p_comb " " q_comb "))" ))
+                                                                           (car comb_p-comb_q)))
+                                                        (cdr comb_p-comb_q)))
+                                                    p-q-pairs)
                                             )
                                       )))]
                                   )
@@ -66,7 +75,22 @@
     )
   )
 
-(define count 0)
+
+(define matching-p-to-q
+  (lambda(sub-combinators)
+  (letrec ((run (lambda(sub-combs acc)
+                  (if (empty? sub-combs)
+                      acc
+                      (if (= (length sub-combs) 1)
+                          (cons (cons (car sub-combs) (car sub-combs)) acc)
+                          (run (reverse (cdr (reverse (cdr sub-combs)))) (cons (cons (first sub-combs) (last sub-combs)) acc))
+                      ))
+                  )))
+    (run sub-combinators '() ))))
+
+ (define count 0)
+
+; aux function to generate new variable
 (define (get-new-var)
   (let (
         (new-var (string-append "v" (number->string count)))
@@ -78,6 +102,8 @@
 ; this function returns stream of all combinators
 (define combinators-stream '())
 
+
+; test function
 (define (test)
   (and (= 1 (length (combinators 1)))
        (= 1 (length (combinators 2)))
@@ -105,11 +131,12 @@
   )
          
          
-(define my-range (lambda (a b step)
+(define my-range (lambda (a b)
   (if (>= a b)
-      '()
-      (cons a (my-range (+ step a) b step)))))
+      `(,a)
+      (cons a (my-range (+ 1 a) b)))))
 
+;;; output examples
 ; ((gen-combs 3)
 ;    ->
 ;    ((lambda (v0) (lambda (v1) v1))
@@ -127,7 +154,7 @@
 ;      (lambda (v0) (lambda (v1) (lambda (v2) (lambda (v3) v0))))
 ;      (lambda (v0) (lambda (v1) (v1 v1)))
 ;      (lambda (v0) (lambda (v1) (v1 v0)))
-;      (lambda (v0) (lambda (v1) (v0 v1)))
+;      (lambda (v0) (lambda (v1) ( v0 v1)))
 ;      (lambda (v0) (lambda (v1) (v0 v0)))
 ;      (lambda (v0) (v0 (lambda (v1) v1)))
 ;      (lambda (v0) (v0 (lambda (v1) v0)))
