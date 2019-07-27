@@ -1,6 +1,6 @@
 #lang racket
 
-(define lambda-string "LAMBDA")
+(define lambda-string "(lambda (")
 ;;; this function get natural number n and return list of all the combintors in the length l (as string)
 ;(define combinators
  ; (lambda(n)
@@ -18,20 +18,23 @@
      ; (combinators n '() ))
     ;))
 
+(define close-brackets (lambda (len)
+                         (make-string len #\))))
 
 (define combinators
   (lambda(n)
+    (set! count 0)
     (letrec ((combinators (lambda (n acc vars)
                             (cond [(zero? n) acc]
                                   [(= n 1) 
                                             (if (empty? acc)
-                                                `(,(symbol->string(gensym)))
+                                                `(,(get-new-var))
                                                 (map (lambda(var)
-                                                       (map (lambda(expr)(string-append expr var)) (flatten acc)))
+                                                       (map (lambda(expr)(string-append expr var (close-brackets (length vars)))) (flatten acc)))
                                                      vars))]
                                   [else
-                                    (let* ((fresh-var (symbol->string(gensym)))
-                                           (fresh-lambda (string-append lambda-string fresh-var "."))
+                                    (let* ((fresh-var (get-new-var))
+                                           (fresh-lambda (string-append lambda-string fresh-var ") "))
                                            )
                                       (combinators (- n 1)
                                                    ;(append
@@ -49,16 +52,31 @@
                             )
                           )
              )
-      (combinators n '() `())
+      (flatten (combinators n '() `()))
       )
     )
   )
 
+(define count 0)
+(define (get-new-var)
+  (let (
+        (new-var (string-append "v" (number->string count)))
+        )
+    (set! count (+ 1 count)) new-var) 
+    )
+
+
+; this function returns stream of all combinators
+(define combinators-stream '())
 
 (define (test)
   (and (= 1 (length (combinators 1)))
        (= 1 (length (combinators 2)))
-       (= 2 (length (combinators 3)))))
+       (= 2 (length (combinators 3)))
+    
+       )
+  
+  )
                                                    
 
 (define num-of-comb
@@ -82,3 +100,77 @@
   (if (>= a b)
       '()
       (cons a (my-range (+ step a) b step)))))
+
+; ((gen-combs 3)
+;    ->
+;    ((lambda (v0) (lambda (v1) v1))
+;      (lambda (v0) (lambda (v1) v0))))
+;  ((gen-combs 4)
+;    ->
+;    ((lambda (v0) (lambda (v1) (lambda (v2) v2)))
+;      (lambda (v0) (lambda (v1) (lambda (v2) v1)))
+;      (lambda (v0) (lambda (v1) (lambda (v2) v0)))
+;      (lambda (v0) (v0 v0))))
+;  ((gen-combs 5)
+;    ->
+;    ((lambda (v0) (lambda (v1) (lambda (v2) (lambda (v3) v3)))) (lambda (v0) (lambda (v1) (lambda (v2) (lambda (v3) v2))))
+;      (lambda (v0) (lambda (v1) (lambda (v2) (lambda (v3) v1))))
+;      (lambda (v0) (lambda (v1) (lambda (v2) (lambda (v3) v0))))
+;      (lambda (v0) (lambda (v1) (v1 v1)))
+;      (lambda (v0) (lambda (v1) (v1 v0)))
+;      (lambda (v0) (lambda (v1) (v0 v1)))
+;      (lambda (v0) (lambda (v1) (v0 v0)))
+;      (lambda (v0) (v0 (lambda (v1) v1)))
+;      (lambda (v0) (v0 (lambda (v1) v0)))
+;      (lambda (v0) ((lambda (v1) v1) v0))
+;      (lambda (v0) ((lambda (v1) v0) v0))
+;      ((lambda (v0) v0) (lambda (v0) v0))))
+;  ((gen-combs 6)
+;    ->
+;    ((lambda (v0)
+;       (lambda (v1) (lambda (v2) (lambda (v3) (lambda (v4) v4)))))
+;     (lambda (v0)
+;       (lambda (v1) (lambda (v2) (lambda (v3) (lambda (v4) v3)))))
+;     (lambda (v0)
+;       (lambda (v1) (lambda (v2) (lambda (v3) (lambda (v4) v2)))))
+;     (lambda (v0)
+;       (lambda (v1) (lambda (v2) (lambda (v3) (lambda (v4) v1)))))
+;     (lambda (v0)
+;       (lambda (v1) (lambda (v2) (lambda (v3) (lambda (v4) v0)))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v2 v2))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v2 v1))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v2 v0))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v1 v2))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v1 v1))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v1 v0))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v0 v2))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v0 v1))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v0 v0))))
+;     (lambda (v0) (lambda (v1) (v1 (lambda (v2) v2))))
+;     (lambda (v0) (lambda (v1) (v1 (lambda (v2) v1))))
+;     (lambda (v0) (lambda (v1) (v1 (lambda (v2) v0))))
+;     (lambda (v0) (lambda (v1) (v0 (lambda (v2) v2))))
+;     (lambda (v0) (lambda (v1) (v0 (lambda (v2) v1))))
+;     (lambda (v0) (lambda (v1) (v0 (lambda (v2) v0))))
+;     (lambda (v0) (lambda (v1) ((lambda (v2) v2) v1)))
+;     (lambda (v0) (lambda (v1) ((lambda (v2) v2) v0)))
+;     (lambda (v0) (lambda (v1) ((lambda (v2) v1) v1)))
+;     (lambda (v0) (lambda (v1) ((lambda (v2) v1) v0)))
+;     (lambda (v0) (lambda (v1) ((lambda (v2) v0) v1)))
+;     (lambda (v0) (lambda (v1) ((lambda (v2) v0) v0)))
+;     (lambda (v0) (v0 (lambda (v1) (lambda (v2) v2))))
+;     (lambda (v0) (v0 (lambda (v1) (lambda (v2) v1))))
+;     (lambda (v0) (v0 (lambda (v1) (lambda (v2) v0))))
+;     (lambda (v0) (v0 (v0 v0)))
+;     (lambda (v0) ((lambda (v1) v1) (lambda (v1) v1)))
+;     (lambda (v0) ((lambda (v1) v1) (lambda (v1) v0)))
+;     (lambda (v0) ((lambda (v1) v0) (lambda (v1) v1)))
+;     (lambda (v0) ((lambda (v1) v0) (lambda (v1) v0)))
+;     (lambda (v0) ((lambda (v1) (lambda (v2) v2)) v0))
+;     (lambda (v0) ((lambda (v1) (lambda (v2) v1)) v0))
+;     (lambda (v0) ((lambda (v1) (lambda (v2) v0)) v0))
+;     (lambda (v0) ((v0 v0) v0))
+;     ((lambda (v0) v0) (lambda (v0) (lambda (v1) v1)))
+;     ((lambda (v0) v0) (lambda (v0) (lambda (v1) v0)))
+;     ((lambda (v0) (lambda (v1) v1)) (lambda (v0) v0))
+;     ((lambda (v0) (lambda (v1) v0)) (lambda (v0) v0)))))
