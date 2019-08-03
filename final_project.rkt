@@ -8,6 +8,13 @@
 ; used racket (due to the editor) and now import to chez
 (define empty? null?)
 
+(define (my-flatten lst depth)
+  (if (<= depth 0)
+      lst 
+      (cond ((null? lst) '())
+            ((pair? lst)
+             (append (my-flatten (car lst) (- depth 1)) (my-flatten (cdr lst) (- depth 1))))
+            (else (list lst)))))
 
 (define combinators
   (lambda(n)
@@ -85,17 +92,18 @@
                                    )
                               (append
                                
-                               (map (lambda(p-q-pair) (map (lambda(p_expr)
+                               extend-to-lambda
+                               (map (lambda(p-q-pair) (my-flatten (map (lambda(p_expr)
                                                              (map (lambda(q_expr)
                                                                                    `(lambda (,fresh-var) (,p_expr ,q_expr))) (cdr p-q-pair)))
-                                                             (car p-q-pair))) p-q-pairs)
-                               extend-to-lambda
+                                                             (car p-q-pair)) 2)) p-q-pairs)
                                ))                              
                               ]))))
       (gen-comb n '()))
     )
   )
 
+;; this function creating all the pairs of (i, m -i) from 0 to m
 (define matching-p-to-q
   (lambda(sub-combinators)
   (letrec ((run (lambda(sub-combs acc)
@@ -180,14 +188,92 @@
   (and (equal? '(v0) (gen-comb 1))
        (equal? '((lambda (v0) v0)) (gen-comb 2))
        (equal? '((lambda (v0) (lambda (v1) v1))(lambda (v0) (lambda (v1) v0))) (gen-comb 3))
-       ;(equal?
-        ;'((lambda (v0) (lambda (v1) (lambda (v2) v2)))(lambda (v0) (lambda (v1) (lambda (v2) v1)))(lambda (v0) (lambda (v1) (lambda (v2) v0)))(lambda (v0) (v0 v0)))
-        ;(gen-comb 4))
+       (equal?
+        '((lambda (v0) (lambda (v1) (lambda (v2) v2)))(lambda (v0) (lambda (v1) (lambda (v2) v1)))(lambda (v0) (lambda (v1) (lambda (v2) v0)))(lambda (v0) (v0 v0)))
+        (gen-comb 4))
        ))
 
 (define (test-stream)
   (and (eq? (stream+count->list combinators-stream 1) (gen-comb 1)) #t))
                                                    
+
+;;; output examples
+; ((gen-combs 3)
+;    ->
+;    ((lambda (v0) (lambda (v1) v1))
+;      (lambda (v0) (lambda (v1) v0))))
+;  ((gen-combs 4)
+;    ->
+;    ((lambda (v0) (lambda (v1) (lambda (v2) v2)))
+;      (lambda (v0) (lambda (v1) (lambda (v2) v1)))
+;      (lambda (v0) (lambda (v1) (lambda (v2) v0)))
+;      (lambda (v0) (v0 v0))))
+;  ((gen-combs 5)
+;    ->
+;    ((lambda (v0) (lambda (v1) (lambda (v2) (lambda (v3) v3)))) (lambda (v0) (lambda (v1) (lambda (v2) (lambda (v3) v2))))
+;      (lambda (v0) (lambda (v1) (lambda (v2) (lambda (v3) v1))))
+;      (lambda (v0) (lambda (v1) (lambda (v2) (lambda (v3) v0))))
+;      (lambda (v0) (lambda (v1) (v1 v1)))
+;      (lambda (v0) (lambda (v1) (v1 v0)))
+;      (lambda (v0) (lambda (v1) ( v0 v1)))
+;      (lambda (v0) (lambda (v1) (v0 v0)))
+;      (lambda (v0) (v0 (lambda (v1) v1)))
+;      (lambda (v0) (v0 (lambda (v1) v0)))
+;      (lambda (v0) ((lambda (v1) v1) v0))
+;      (lambda (v0) ((lambda (v1) v0) v0))
+;      ((lambda (v0) v0) (lambda (v0) v0))))
+;  ((gen-combs 6)
+;    ->
+;    ((lambda (v0)
+;       (lambda (v1) (lambda (v2) (lambda (v3) (lambda (v4) v4)))))
+;     (lambda (v0)
+;       (lambda (v1) (lambda (v2) (lambda (v3) (lambda (v4) v3)))))
+;     (lambda (v0)
+;       (lambda (v1) (lambda (v2) (lambda (v3) (lambda (v4) v2)))))
+;     (lambda (v0)
+;       (lambda (v1) (lambda (v2) (lambda (v3) (lambda (v4) v1)))))
+;     (lambda (v0)
+;       (lambda (v1) (lambda (v2) (lambda (v3) (lambda (v4) v0)))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v2 v2))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v2 v1))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v2 v0))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v1 v2))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v1 v1))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v1 v0))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v0 v2))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v0 v1))))
+;     (lambda (v0) (lambda (v1) (lambda (v2) (v0 v0))))
+;     (lambda (v0) (lambda (v1) (v1 (lambda (v2) v2))))
+;     (lambda (v0) (lambda (v1) (v1 (lambda (v2) v1))))
+;     (lambda (v0) (lambda (v1) (v1 (lambda (v2) v0))))
+;     (lambda (v0) (lambda (v1) (v0 (lambda (v2) v2))))
+;     (lambda (v0) (lambda (v1) (v0 (lambda (v2) v1))))
+;     (lambda (v0) (lambda (v1) (v0 (lambda (v2) v0))))
+;     (lambda (v0) (lambda (v1) ((lambda (v2) v2) v1)))
+;     (lambda (v0) (lambda (v1) ((lambda (v2) v2) v0)))
+;     (lambda (v0) (lambda (v1) ((lambda (v2) v1) v1)))
+;     (lambda (v0) (lambda (v1) ((lambda (v2) v1) v0)))
+;     (lambda (v0) (lambda (v1) ((lambda (v2) v0) v1)))
+;     (lambda (v0) (lambda (v1) ((lambda (v2) v0) v0)))
+;     (lambda (v0) (v0 (lambda (v1) (lambda (v2) v2))))
+;     (lambda (v0) (v0 (lambda (v1) (lambda (v2) v1))))
+;     (lambda (v0) (v0 (lambda (v1) (lambda (v2) v0))))
+;     (lambda (v0) (v0 (v0 v0)))
+;     (lambda (v0) ((lambda (v1) v1) (lambda (v1) v1)))
+;     (lambda (v0) ((lambda (v1) v1) (lambda (v1) v0)))
+;     (lambda (v0) ((lambda (v1) v0) (lambda (v1) v1)))
+;     (lambda (v0) ((lambda (v1) v0) (lambda (v1) v0)))
+;     (lambda (v0) ((lambda (v1) (lambda (v2) v2)) v0))
+;     (lambda (v0) ((lambda (v1) (lambda (v2) v1)) v0))
+;     (lambda (v0) ((lambda (v1) (lambda (v2) v0)) v0))
+;     (lambda (v0) ((v0 v0) v0))
+;     ((lambda (v0) v0) (lambda (v0) (lambda (v1) v1)))
+;     ((lambda (v0) v0) (lambda (v0) (lambda (v1) v0)))
+;     ((lambda (v0) (lambda (v1) v1)) (lambda (v0) v0))
+;     ((lambda (v0) (lambda (v1) v0)) (lambda (v0) v0)))))
+
+
+
 
 ;;; output examples
 ; ((gen-combs 3)
